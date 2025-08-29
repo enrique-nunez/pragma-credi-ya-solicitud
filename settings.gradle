@@ -12,7 +12,7 @@ buildCache {
     }
 }
 
-rootProject.name = 'CrediYaSolicitud'
+rootProject.name = 'PragmaCrediYaLoan'
 
 include ':app-service'
 include ':model'
