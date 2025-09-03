@@ -2,22 +2,18 @@ package co.com.pragma.model.common.enums;
 
 public enum ErrorCode {
     // Validation errors (400)
-    FIRST_NAME_REQUIRED("APP_001", "First name is required"),
-    LAST_NAME_REQUIRED("APP_002", "Last name is required"),
-    EMAIL_REQUIRED("APP_003", "Email is required"),
-    BASE_SALARY_REQUIRED("APP_004", "Base salary is required"),
-    INVALID_EMAIL_FORMAT("APP_005", "Invalid email format"),
-    INVALID_SALARY_RANGE("APP_006", "Base salary must be between 0 and 15,000,000"),
-    VALIDATION_ERROR("APP_007", "Validation error"),
+    EMAIL_REQUIRED("APP_001", "El correo electrónico es obligatorio"),
+    INVALID_EMAIL_FORMAT("APP_002", "El correo electrónico no es válido"),
+    TERM_REQUIRED("APP_003", "El plazo es obligatorio"),
+    INVALID_TERM("APP_004", "El plazo debe ser un número positivo"),
+    AMOUNT_REQUIRED("APP_005", "El monto es obligatorio"),
+    TYPE_REQUIRED("APP_006", "El tipo de préstamo es obligatorio"),
+    INVALID_AMOUNT("APP_007", "El monto debe ser un número positivo"),
 
-    // Role errors (404)
-    ROLE_NOT_FOUND("ROL_NO_ENCONTRADO", "El rol especificado no existe"),
-
-    // Conflict errors (409)
-    EMAIL_ALREADY_EXISTS("APP_409", "Email is already registered"),
-
-    // Not found errors (404)
-    USER_NOT_FOUND("APP_404", "User not found"),
+    VALIDATION_ERROR("APP_008", "Validation error"),
+    LOAN_TYPE_NOT_EXISTS("APP_009", "El tipo de préstamo no existe"),
+    STATUS_LOAN_NOT_EXISTS("APP_010", "El estado del préstamo no existe"),
+    USER_EMAIL_NOT_EXISTS("APP_011", "El usuario con el correo electrónico proporcionado no existe"),
     ROUTE_NOT_FOUND("APP_404_ROUTE", "Route not found"),
 
     // Database errors (500)

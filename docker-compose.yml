@@ -1,7 +1,7 @@
 services:
-  postgres:
+  postgres-solicitud:
     image: postgres:17
-    container_name: dev-postgres
+    container_name: dev-postgres-solicitud
     restart: unless-stopped
     ports:
       - "5434:5432"
@@ -11,8 +11,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
       TZ: America/Lima
     volumes:
-      - pg_data:/var/lib/postgresql/data
-      - ./init:/docker-entrypoint-initdb.d  # scripts .sql/.sh opcionales
+      - pg_data_solicitud:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
@@ -20,4 +20,4 @@ services:
       retries: 5
 
 volumes:
-  pg_data:
+  pg_data_solicitud:
