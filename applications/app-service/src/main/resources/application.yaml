@@ -1,8 +1,8 @@
 server:
-  port: 8081
+  port: 8082
 spring:
   r2dbc:
-    url: "r2dbc:postgresql://localhost:5433/crediyasolicitud"
+    url: "r2dbc:postgresql://localhost:5434/crediyasolicitud"
     username: "crediya"
     password: "crediya2025"
   sql:
@@ -14,13 +14,37 @@ spring:
 adapters:
   r2dbc:
     host: "localhost"
-    port: 5433
+    port: 5434
     database: "crediyasolicitud"
     username: "crediya"
     password: "crediya2025"
     pool: null
+  restuser:
+    timeout: 5000
+    url: "http://localhost:8081"
+resilience4j:
+  circuitbreaker:
+    instances:
+      testGet:
+        registerHealthIndicator: true
+        failureRateThreshold: 50
+        slowCallRateThreshold: 50
+        slowCallDurationThreshold: "2s"
+        permittedNumberOfCallsInHalfOpenState: 3
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 10
+        waitDurationInOpenState: "10s"
+      testPost:
+        registerHealthIndicator: true
+        failureRateThreshold: 50
+        slowCallRateThreshold: 50
+        slowCallDurationThreshold: "2s"
+        permittedNumberOfCallsInHalfOpenState: 3
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 10
+        waitDurationInOpenState: "10s"
 cors:
-  allowed-origins: "http://localhost:4200,http://localhost:8081"
+  allowed-origins: "http://localhost:4200,http://localhost:8082"
 management:
   endpoints:
     web:
@@ -30,20 +54,22 @@ management:
     health:
       probes:
         enabled: true
+  health:
+    circuitbreakers:
+      enabled: true
 logging:
   level:
     io.r2dbc.postgresql.QUERY: "DEBUG"
     org.springframework.data.r2dbc: "DEBUG"
-
 springdoc:
   api-docs:
-    path: /api-docs
+    path: "/api-docs"
   swagger-ui:
-    path: /swagger-ui.html
+    path: "/swagger-ui.html"
     enabled: true
   show-actuator: false
-
 application:
-  name: "Pragma Solicitude Management API"
-  description: "API REST para administración de solicitudes con arquitectura reactiva usando Spring WebFlux y R2DBC con PostgreSQL. - Banco Colombia CrediYaSolicitude"
+  name: "Pragma Solicitudes Management API"
+  description: "API REST para administración de solicitudes con arquitectura reactiva\
+    \ usando Spring WebFlux y R2DBC con PostgreSQL. - Banco Colombia CrediYaLoan"
   version: "1.0.0"
