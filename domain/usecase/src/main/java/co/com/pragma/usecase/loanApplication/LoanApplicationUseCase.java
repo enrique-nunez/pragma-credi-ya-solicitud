@@ -1,10 +1,15 @@
 package co.com.pragma.usecase.loanApplication;
 
-import co.com.pragma.model.common.exceptions.GlobalBusinessException;
 import co.com.pragma.model.common.exceptions.InvalidInputException;
 import co.com.pragma.model.common.exceptions.NotFoundException;
+import co.com.pragma.model.common.models.BaseResponse;
+import co.com.pragma.model.common.models.PaginationResponse;
+import co.com.pragma.model.common.models.ResponseMessages;
 import co.com.pragma.model.loanType.gateways.LoanTypeRepository;
 import co.com.pragma.model.loanapplication.LoanApplication;
+import co.com.pragma.model.loanapplication.dto.LoanApplicationPagedResponse;
+import co.com.pragma.model.loanapplication.dto.LoanApplicationSummaryView;
+import co.com.pragma.model.loanapplication.dto.SearchRequest;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.pragma.model.user.gateways.UserRepository;
 import co.com.pragma.model.common.enums.ErrorCode;
@@ -12,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 @RequiredArgsConstructor
@@ -41,7 +48,32 @@ public class LoanApplicationUseCase {
                 });
     }
 
-    private Mono<LoanApplication> validateLoanApplication(LoanApplication loanApplication) {
+    public Mono<BaseResponse<List<LoanApplicationPagedResponse>>> getPendingLoanApplicationsPaged(SearchRequest searchRequest) {
+        return loanApplicationRepository.findAllSummariesPaged(searchRequest)
+                .collectList()
+                .zipWith(loanApplicationRepository.countPendingSummaries())
+                .map(tuple -> {
+                    List<LoanApplicationPagedResponse> content = tuple.getT1();
+                    Long totalElements = tuple.getT2();
+
+                    PaginationResponse pagination = PaginationResponse.builder()
+                            .page(searchRequest.getPage())
+                            .size(searchRequest.getSize())
+                            .totalElements(totalElements)
+                            .totalPages((int) Math.ceil((double) totalElements / searchRequest.getSize()))
+                            .build();
+
+                    BaseResponse<List<LoanApplicationPagedResponse>> response = new BaseResponse<>(
+                            true, content, ResponseMessages.OPERATION_SUCCESSFUL
+                    );
+                    response.setPagination(pagination);
+                    return response;
+                });
+    }
+
+
+
+    Mono<LoanApplication> validateLoanApplication(LoanApplication loanApplication) {
         if (loanApplication.getEmail() == null || loanApplication.getEmail().isBlank()) {
             logger.warning("Validación fallida: " + ErrorCode.TYPE_REQUIRED.getMessage());
             return Mono.error(new InvalidInputException(ErrorCode.EMAIL_REQUIRED));

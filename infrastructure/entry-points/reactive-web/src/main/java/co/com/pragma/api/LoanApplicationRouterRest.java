@@ -16,6 +16,7 @@ public class LoanApplicationRouterRest {
 
     @Bean
     public RouterFunction<ServerResponse> loanApplicationRouterFunction(LoanApplicationHandler loanApplicationHandler) {
-        return route(POST("/api/v1/solicitud"), loanApplicationHandler::saveLoanApplication);
+        return route(POST("/api/v1/solicitud"), loanApplicationHandler::saveLoanApplication)
+                .andRoute(GET("/api/v1/solicitud/search"), loanApplicationHandler::getLoanApplicationsSearch);
     }
 }

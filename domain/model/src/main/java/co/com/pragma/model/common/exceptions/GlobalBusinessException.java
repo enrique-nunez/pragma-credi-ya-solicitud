@@ -18,7 +18,7 @@ public class GlobalBusinessException extends RuntimeException {
         LOAN_TYPE_NOT_EXISTS("El tipo de préstamo no existe"),
         USER_NOT_EXISTS("El usuario no existe");
 
-        private final String defaultMessage;
+        final String defaultMessage;
 
         Type(String defaultMessage) {
             this.defaultMessage = defaultMessage;
