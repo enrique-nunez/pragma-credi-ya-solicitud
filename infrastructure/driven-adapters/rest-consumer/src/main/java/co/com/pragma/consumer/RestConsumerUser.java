@@ -8,6 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -17,26 +20,57 @@ public class RestConsumerUser implements UserRepository {
 
     private final WebClient client;
 
-    @CircuitBreaker(name = "existUserByEmail", fallbackMethod = "testExistUserByEmailOk")
+    @CircuitBreaker(name = "existUserByEmail", fallbackMethod = "fallbackExistUserByEmail")
     public Mono<Boolean> existUserByEmail(String email) {
         log.info("Verificando existencia de usuario con email: {}", email);
-        return client
-                .get()
-                .uri(uriBuilder -> uriBuilder.path("/api/v1/usuarios/email/validate/{email}").build(email))
-                .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<BaseResponse<Boolean>>() {})
-                .map(BaseResponse::getData)
-                .doOnSuccess(result -> log.info("Resultado de existencia para {}: {}", email, result))
-                .doOnError(error -> log.error("Error al verificar usuario: {}", error.getMessage(), error));
+        return getCurrentToken()
+                .flatMap(jwtToken -> client
+                        .get()
+                        .uri(uriBuilder -> uriBuilder.path("/api/v1/usuarios/email/validate/{email}").build(email))
+                        .header("Authorization", "Bearer " + jwtToken)
+                        .retrieve()
+                        .bodyToMono(new ParameterizedTypeReference<BaseResponse<Boolean>>() {})
+                        .map(BaseResponse::getData)
+                        .doOnSuccess(result -> log.info("Resultado de existencia para {}: {}", email, result))
+                        .doOnError(error -> log.error("Error al verificar usuario: {}", error.getMessage(), error))
+                );
     }
 
-    public Mono<String> testExistUserByEmailOk(Exception ignored) {
-        log.warn("Entrando al método de fallback testExistUserByEmailOk");
-        return client
-                .get()
-                .retrieve()
-                .bodyToMono(String.class)
-                .doOnError(error -> log.error("Error en fallback: {}", error.getMessage(), error));
+    public Mono<Boolean> fallbackExistUserByEmail(String email, Exception exception) {
+        log.warn("Fallback activado para verificar usuario {}: {}", email, exception.getMessage());
+        return Mono.just(false);
     }
 
+    /**
+     * Obtiene el token JWT del contexto de seguridad actual
+     */
+    private Mono<String> getCurrentToken() {
+        return ReactiveSecurityContextHolder.getContext()
+                .map(SecurityContext::getAuthentication)
+                .filter(auth -> auth instanceof JwtAuthenticationToken)
+                .cast(JwtAuthenticationToken.class)
+                .map(jwtAuth -> jwtAuth.getToken().getTokenValue())
+                .doOnNext(token -> log.debug("Token extraído del contexto de seguridad"))
+                .switchIfEmpty(Mono.error(new RuntimeException("No se encontró token JWT en el contexto de seguridad")));
+    }
+
+    /**
+     * Método utilitario para extraer datos del token (si es necesario en el futuro)
+     */
+    private Mono<Void> extraerDatosDelToken() {
+        return ReactiveSecurityContextHolder.getContext()
+                .map(SecurityContext::getAuthentication)
+                .filter(a -> a instanceof JwtAuthenticationToken)
+                .map(a -> (JwtAuthenticationToken) a)
+                .doOnNext(jwtAuth -> {
+                    String email = jwtAuth.getToken().getClaim("email");
+                    String id = jwtAuth.getToken().getClaim("id");
+                    Object roles = jwtAuth.getToken().getClaim("roles");
+
+                    log.info("Email: {}", email);
+                    log.info("ID: {}", id);
+                    log.info("Roles: {}", roles);
+                })
+                .then();
+    }
 }
