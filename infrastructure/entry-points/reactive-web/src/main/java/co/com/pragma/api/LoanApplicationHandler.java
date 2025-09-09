@@ -8,6 +8,7 @@ import co.com.pragma.model.common.exceptions.InvalidInputException;
 import co.com.pragma.model.common.models.BaseResponse;
 import co.com.pragma.model.common.models.GlobalBusinessValidation;
 import co.com.pragma.model.common.models.ResponseMessages;
+import co.com.pragma.model.loanapplication.dto.SearchRequest;
 import co.com.pragma.usecase.loanApplication.LoanApplicationUseCase;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -54,6 +55,16 @@ public class LoanApplicationHandler {
                     response.setStateCode(HttpStatus.CREATED.value());
                     return ServerResponse.status(HttpStatus.CREATED).bodyValue(response);
                 })
+                .onErrorResume(Mono::error);
+    }
+
+    public Mono<ServerResponse> getLoanApplicationsSearch(ServerRequest serverRequest) {
+        return serverRequest.bodyToMono(SearchRequest.class)
+                .switchIfEmpty(Mono.just(new SearchRequest()))
+                .flatMap(searchRequest -> loanapplicationUseCase.getPendingLoanApplicationsPaged(searchRequest)
+                        .flatMap(response -> ServerResponse.ok().bodyValue(response))
+                )
+                .doOnError(e -> log.error("Error retrieving loan applications: {}", e.getMessage()))
                 .onErrorResume(Mono::error);
     }
 }

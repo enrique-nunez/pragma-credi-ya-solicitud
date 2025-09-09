@@ -2,9 +2,9 @@ package co.com.pragma.model.common.models;
 
 public class BaseResponse<T> {
     private boolean success;
+    private String message;
     private T data;
     private Object exception;
-    private String message;
     private Object stateCode;
     private Object pagination;
 
