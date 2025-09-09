@@ -1,13 +1,10 @@
 package co.com.pragma.usecase.loanApplication;
 
-import co.com.pragma.model.common.enums.ErrorCode;
 import co.com.pragma.model.common.exceptions.InvalidInputException;
 import co.com.pragma.model.common.exceptions.NotFoundException;
-import co.com.pragma.model.common.models.BaseResponse;
 import co.com.pragma.model.loanType.LoanType;
 import co.com.pragma.model.loanType.gateways.LoanTypeRepository;
 import co.com.pragma.model.loanapplication.LoanApplication;
-import co.com.pragma.model.loanapplication.dto.LoanApplicationSummaryView;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.pragma.model.user.gateways.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,15 +12,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -153,5 +147,51 @@ class LoanApplicationUseCaseTest {
                 .expectError(RuntimeException.class)
                 .verify();
     }
+
+    @Test
+    void validateLoanApplication_InvalidAmount_ShouldThrowException() {
+        LoanApplication invalidApplication = testLoanApplication.toBuilder()
+                .amount(BigDecimal.ZERO)
+                .build();
+
+        StepVerifier.create(loanApplicationUseCase.validateLoanApplication(invalidApplication))
+                .expectError(InvalidInputException.class)
+                .verify();
+    }
+
+    @Test
+    void validateLoanApplication_InvalidTerm_ShouldThrowException() {
+        LoanApplication invalidApplication = testLoanApplication.toBuilder()
+                .term(0)
+                .build();
+
+        StepVerifier.create(loanApplicationUseCase.validateLoanApplication(invalidApplication))
+                .expectError(InvalidInputException.class)
+                .verify();
+    }
+
+    @Test
+    void validateLoanApplication_NullLoanTypeId_ShouldThrowException() {
+        LoanApplication invalidApplication = testLoanApplication.toBuilder()
+                .loanTypeId(null)
+                .build();
+
+        StepVerifier.create(loanApplicationUseCase.validateLoanApplication(invalidApplication))
+                .expectError(InvalidInputException.class)
+                .verify();
+    }
+
+//    @Test
+//    void getPendingLoanApplicationsPaged_ShouldReturnResponseWithPagination() {
+//        List<LoanApplicationSummaryView> summaries = List.of(/* mocks o instancias de prueba */);
+//        when(loanApplicationRepository.findAllSummariesPaged(anyInt(), anyInt()))
+//                .thenReturn(reactor.core.publisher.Flux.fromIterable(summaries));
+//        when(loanApplicationRepository.countPendingSummaries())
+//                .thenReturn(Mono.just(10L));
+//
+//        StepVerifier.create(loanApplicationUseCase.getPendingLoanApplicationsPaged(0, 5))
+//                .expectNextMatches(response -> response.getPagination().get("totalElements").equals(10L))
+//                .verifyComplete();
+//    }
 
 }
