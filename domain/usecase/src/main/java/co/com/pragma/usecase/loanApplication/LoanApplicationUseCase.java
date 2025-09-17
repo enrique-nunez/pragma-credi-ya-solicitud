@@ -8,7 +8,6 @@ import co.com.pragma.model.common.models.ResponseMessages;
 import co.com.pragma.model.loanType.gateways.LoanTypeRepository;
 import co.com.pragma.model.loanapplication.LoanApplication;
 import co.com.pragma.model.loanapplication.dto.LoanApplicationPagedResponse;
-import co.com.pragma.model.loanapplication.dto.LoanApplicationSummaryView;
 import co.com.pragma.model.loanapplication.dto.SearchRequest;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.pragma.model.user.gateways.UserRepository;
