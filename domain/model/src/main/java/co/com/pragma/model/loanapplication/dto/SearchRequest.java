@@ -4,6 +4,7 @@ import lombok.Data;
 
 @Data
 public class SearchRequest {
-    Integer page = 0;
-    Integer size = 10;
+    Integer statusId;
+    Integer page;
+    Integer size;
 }

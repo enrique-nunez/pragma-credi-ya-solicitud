@@ -31,4 +31,7 @@ public class LoanApplicationFieldsPageDto {
 
     @Column("estadoSolicitud")
     private String estadoSolicitud;
+
+    @Column("deudaTotalMensual")
+    private BigDecimal deudaTotalMensual;
 }
