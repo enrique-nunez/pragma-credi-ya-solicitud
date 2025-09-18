@@ -37,7 +37,7 @@ public class LoanApplicationReactiveRepositoryAdapter extends ReactiveAdapterOpe
 
     public Flux<LoanApplicationPagedResponse> findAllSummariesPaged(SearchRequest searchRequest) {
         int offset = searchRequest.getPage() * searchRequest.getSize();
-        return repository.findPendingSummariesPaged(searchRequest.getSize(), offset)
+        return repository.findPendingSummariesPaged(searchRequest.getStatusId(), searchRequest.getSize(), offset)
                 .doOnNext(dto -> System.out.println("DTO desde BD: " + dto))
                 .map(mapper::toModel)
                 .doOnNext(response -> System.out.println("Response mapeada: " + response));

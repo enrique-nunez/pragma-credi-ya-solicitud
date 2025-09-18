@@ -59,11 +59,15 @@ public class LoanApplicationHandler {
     }
 
     public Mono<ServerResponse> getLoanApplicationsSearch(ServerRequest serverRequest) {
-        return serverRequest.bodyToMono(SearchRequest.class)
-                .switchIfEmpty(Mono.just(new SearchRequest()))
-                .flatMap(searchRequest -> loanapplicationUseCase.getPendingLoanApplicationsPaged(searchRequest)
-                        .flatMap(response -> ServerResponse.ok().bodyValue(response))
-                )
+        int page = serverRequest.queryParam("page").map(Integer::parseInt).orElse(0);
+        int size = serverRequest.queryParam("size").map(Integer::parseInt).orElse(10);
+        SearchRequest searchRequest = new SearchRequest();
+        searchRequest.setPage(serverRequest.queryParam("page").map(Integer::parseInt).orElse(0));
+        searchRequest.setSize(serverRequest.queryParam("size").map(Integer::parseInt).orElse(10));
+        searchRequest.setStatusId(serverRequest.queryParam("statusId").map(Integer::parseInt).orElse(1));
+
+        return loanapplicationUseCase.getPendingLoanApplicationsPaged(searchRequest)
+                .flatMap(response -> ServerResponse.ok().bodyValue(response))
                 .doOnError(e -> log.error("Error retrieving loan applications: {}", e.getMessage()))
                 .onErrorResume(Mono::error);
     }

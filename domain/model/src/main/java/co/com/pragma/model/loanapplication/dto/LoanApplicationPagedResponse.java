@@ -18,6 +18,7 @@ public class LoanApplicationPagedResponse {
     private String tipoPrestamo;
     private BigDecimal tasaInteres;
     private String estadoSolicitud;
+    private BigDecimal deudaTotalMensual;
 
 
     @ConstructorProperties({
@@ -27,7 +28,7 @@ public class LoanApplicationPagedResponse {
     public LoanApplicationPagedResponse(Long idSolicitud, BigDecimal montoSolicitado,
                                         Integer plazoMeses, String emailUsuario,
                                         String tipoPrestamo, BigDecimal tasaInteres,
-                                        String estadoSolicitud) {
+                                        String estadoSolicitud, BigDecimal deudaTotalMensual) {
         this.idSolicitud = idSolicitud;
         this.montoSolicitado = montoSolicitado;
         this.plazoMeses = plazoMeses;
@@ -35,5 +36,6 @@ public class LoanApplicationPagedResponse {
         this.tipoPrestamo = tipoPrestamo;
         this.tasaInteres = tasaInteres;
         this.estadoSolicitud = estadoSolicitud;
+        this.deudaTotalMensual = deudaTotalMensual;
     }
 }

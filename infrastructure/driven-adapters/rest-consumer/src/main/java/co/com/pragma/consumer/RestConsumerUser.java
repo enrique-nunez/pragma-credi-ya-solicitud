@@ -26,7 +26,7 @@ public class RestConsumerUser implements UserRepository {
         return getCurrentToken()
                 .flatMap(jwtToken -> client
                         .get()
-                        .uri(uriBuilder -> uriBuilder.path("/api/v1/usuarios/email/validate/{email}").build(email))
+                        .uri(uriBuilder -> uriBuilder.path("/api/v1/usuarios/validar/{email}").build(email))
                         .header("Authorization", "Bearer " + jwtToken)
                         .retrieve()
                         .bodyToMono(new ParameterizedTypeReference<BaseResponse<Boolean>>() {})
