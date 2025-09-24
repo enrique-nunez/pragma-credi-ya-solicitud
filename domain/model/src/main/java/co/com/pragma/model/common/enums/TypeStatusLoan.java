@@ -1,9 +1,9 @@
 package co.com.pragma.model.common.enums;
 
 public enum TypeStatusLoan {
-    PENDING(1L, "Pendiente de revisión"),
-    APPROVED(2L, "El préstamo ha sido aprobado"),
-    REJECTED(3L, "El préstamo ha sido rechazado"),;
+    PENDING(1L, "PENDING"),
+    APPROVED(2L, "APPROVED"),
+    REJECTED(3L, "REJECTED");
 
     private final Long value;
     private final String description;

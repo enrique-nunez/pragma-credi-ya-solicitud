@@ -1,5 +1,6 @@
 package co.com.pragma.usecase.loanApplication;
 
+import co.com.pragma.model.common.enums.TypeStatusLoan;
 import co.com.pragma.model.common.exceptions.InvalidInputException;
 import co.com.pragma.model.common.exceptions.NotFoundException;
 import co.com.pragma.model.common.models.BaseResponse;
@@ -8,8 +9,13 @@ import co.com.pragma.model.common.models.ResponseMessages;
 import co.com.pragma.model.loanType.gateways.LoanTypeRepository;
 import co.com.pragma.model.loanapplication.LoanApplication;
 import co.com.pragma.model.loanapplication.dto.LoanApplicationPagedResponse;
+import co.com.pragma.model.loanapplication.dto.LoanApplicationPagedResponseMapper;
+import co.com.pragma.model.loanapplication.dto.SQSMessage;
 import co.com.pragma.model.loanapplication.dto.SearchRequest;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
+import co.com.pragma.model.loanapplication.gateways.NotificationQueueGateway;
+import co.com.pragma.model.loanstatus.gateways.LoanstatusRepository;
+import co.com.pragma.model.user.User;
 import co.com.pragma.model.user.gateways.UserRepository;
 import co.com.pragma.model.common.enums.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +33,8 @@ public class LoanApplicationUseCase {
     private final LoanApplicationRepository loanApplicationRepository;
     private final LoanTypeRepository loanTypeRepository;
     private final UserRepository userRepository;
+    private final LoanstatusRepository loanStatusRepository;
+    private final NotificationQueueGateway notificationQueueGateway;
 
     public Mono<LoanApplication> saveLoanApplication(LoanApplication loanApplication) {
         logger.info("Iniciando registro de solicitud de préstamo para email: " + loanApplication.getEmail());
@@ -48,29 +56,72 @@ public class LoanApplicationUseCase {
     }
 
     public Mono<BaseResponse<List<LoanApplicationPagedResponse>>> getPendingLoanApplicationsPaged(SearchRequest searchRequest) {
-        return loanApplicationRepository.findAllSummariesPaged(searchRequest)
-                .collectList()
-                .zipWith(loanApplicationRepository.countPendingSummaries())
-                .map(tuple -> {
-                    List<LoanApplicationPagedResponse> content = tuple.getT1();
-                    Long totalElements = tuple.getT2();
+        return Mono.zip(
+                    loanApplicationRepository.findAllSummariesPaged(searchRequest).collectList(),
+                    loanApplicationRepository.countPendingSummaries(),
+                    userRepository.getAllUsers()
+                ).map(tuple -> {
+                        List<User> users = tuple.getT3();
+                        List<LoanApplicationPagedResponse> content = tuple.getT1().stream()
+                            .map(summary -> LoanApplicationPagedResponseMapper.map(summary, users))
+                            .toList();
 
-                    PaginationResponse pagination = PaginationResponse.builder()
-                            .page(searchRequest.getPage())
-                            .size(searchRequest.getSize())
-                            .totalElements(totalElements)
-                            .totalPages((int) Math.ceil((double) totalElements / searchRequest.getSize()))
-                            .build();
+                        Long totalElements = tuple.getT2();
 
-                    BaseResponse<List<LoanApplicationPagedResponse>> response = new BaseResponse<>(
-                            true, content, ResponseMessages.OPERATION_SUCCESSFUL
-                    );
-                    response.setPagination(pagination);
-                    return response;
+                        PaginationResponse pagination = PaginationResponse.builder()
+                                .page(searchRequest.getPage())
+                                .size(searchRequest.getSize())
+                                .totalElements(totalElements)
+                                .totalPages((int) Math.ceil((double) totalElements / searchRequest.getSize()))
+                                .build();
+
+                        BaseResponse<List<LoanApplicationPagedResponse>> response = new BaseResponse<>(
+                                true, content, ResponseMessages.OPERATION_SUCCESSFUL
+                        );
+                        response.setPagination(pagination);
+                        return response;
                 });
     }
 
+    public Mono<LoanApplicationPagedResponse> updateStatusLoanApplication(Long loanApplicationId, String statusName) {
+        return loanStatusRepository.findIdByName(statusName)
+                .switchIfEmpty(Mono.error(new NotFoundException(ErrorCode.STATUS_LOAN_NOT_EXISTS)))
+                .flatMap(loanStatusId -> loanApplicationRepository.findByLoanApplicationId(loanApplicationId)
+                        .switchIfEmpty(Mono.error(new NotFoundException(ErrorCode.LOAN_TYPE_NOT_EXISTS)))
+                        .flatMap(loanApplication -> loanApplicationRepository.updateLoanApplication(loanApplicationId, loanStatusId)
+                                .switchIfEmpty(Mono.error(new NotFoundException(ErrorCode.STATUS_LOAN_NOT_EXISTS)))
+                                .flatMap(updatedApplication -> {
+                                    if (TypeStatusLoan.APPROVED.getDescription().equalsIgnoreCase(statusName) || TypeStatusLoan.REJECTED.getDescription().equalsIgnoreCase(statusName)) {
+                                        return notificationQueueGateway.publishLoanApplicationStatusChanged(
+                                                        createSQSMessage(updatedApplication, loanApplicationId)
+                                                )
+                                                .doOnError(error -> logger.warning("Error sending notification: " + error.getMessage()))
+                                                .thenReturn(updatedApplication);
+                                    }
+                                    return Mono.just(updatedApplication);
+                                })
+                        )
+                );
+    }
 
+    public SQSMessage createSQSMessage(LoanApplicationPagedResponse loanApplication, Long loanApplicationId) {
+        return SQSMessage.builder()
+                .to(loanApplication.getEmailUsuario())
+                .subject("Su solicitud de prestamo ha sido " + loanApplication.getEstadoSolicitud().toLowerCase())
+                .body(
+                        "Estimado/a  usuario,\n\n" +
+                                "Le informamos que su solicitud de prestamo  ha sido " + loanApplication.getEstadoSolicitud().toLowerCase() + ".\n\n" +
+                                "Detalles de la solicitud:\n" +
+                                "- Tipo de prestamo: " + loanApplication.getTipoPrestamo() + "\n" +
+                                "- Monto solicitado: $" + loanApplication.getMontoSolicitado() + "\n" +
+                                "- Plazo (meses): " + loanApplication.getPlazoMeses() + "\n" +
+                                "- Tasa de interes: " + loanApplication.getTasaInteres() + "%\n" +
+                                "- Deuda mensual: $" + loanApplication.getDeudaTotalMensual() + "\n\n" +
+                                "Por favor, no responda a este correo. Si tiene dudas, comuníquese con nuestro equipo de atencion.\n\n" +
+                                "Atentamente,\nBanco CrediYa"
+                )
+                .build();
+    }
 
     Mono<LoanApplication> validateLoanApplication(LoanApplication loanApplication) {
         if (loanApplication.getEmail() == null || loanApplication.getEmail().isBlank()) {

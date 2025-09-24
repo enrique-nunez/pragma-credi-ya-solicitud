@@ -58,7 +58,8 @@ public class LoanApplicationPagedResponseTest {
                     "Hipotecario",
                     new BigDecimal("8.75"),
                     "PENDIENTE",
-                    BigDecimal.ZERO
+                    BigDecimal.ZERO,
+                    "Test User"
             );
 
             assertEquals(10L, response.getIdSolicitud());
@@ -74,7 +75,7 @@ public class LoanApplicationPagedResponseTest {
         @DisplayName("Constructor with null values should accept nulls")
         void constructorWithNullValues_ShouldAcceptNulls() {
             LoanApplicationPagedResponse response = new LoanApplicationPagedResponse(
-                    null, null, null, null, null, null, null, BigDecimal.ZERO
+                    null, null, null, null, null, null, null, BigDecimal.ZERO, null
             );
 
             assertNull(response.getIdSolicitud());
@@ -519,7 +520,7 @@ public class LoanApplicationPagedResponseTest {
 
             LoanApplicationPagedResponse response = new LoanApplicationPagedResponse(
                     1L, preciseAmount, 12, "test@example.com",
-                    "Personal", preciseRate, "APROBADO", BigDecimal.ZERO
+                    "Personal", preciseRate, "APROBADO", BigDecimal.ZERO, "Test User"
             );
 
             assertEquals(preciseAmount, response.getMontoSolicitado());

@@ -8,5 +8,6 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface LoanApplicationSearchMapper {
 
+    @Mapping(target = "nombreUsuario", ignore = true)
     LoanApplicationPagedResponse toModel(LoanApplicationFieldsPageDto dto);
 }

@@ -1,5 +1,6 @@
 package co.com.pragma.r2dbc;
 
+import co.com.pragma.model.loanapplication.LoanApplication;
 import co.com.pragma.r2dbc.dto.LoanApplicationFieldsPageDto;
 import co.com.pragma.r2dbc.entity.LoanApplicationEntity;
 import org.springframework.data.r2dbc.repository.Query;
@@ -21,7 +22,7 @@ public interface LoanApplicationReactiveRepository extends ReactiveCrudRepositor
                tp.tasa_interes AS tasaInteres,
                est.descripcion AS estadoSolicitud,
                CASE
-                  WHEN est.nombre = 'APPROVED' THEN (sol.monto * ((tp.tasa_interes / 12 / 100) / (1 - POWER(1 + (tp.tasa_interes / 12 / 100), -sol.plazo))))
+                  WHEN est.nombre = 'APPROVED' THEN ROUND(sol.monto * ((tp.tasa_interes / 12 / 100) / (1 - POWER(1 + (tp.tasa_interes / 12 / 100), -sol.plazo))), 2)
                   ELSE 0
               END AS deudaTotalMensual
         FROM solicitud sol
@@ -39,4 +40,30 @@ public interface LoanApplicationReactiveRepository extends ReactiveCrudRepositor
     WHERE est.nombre = 'PENDING'
     """)
     Mono<Long> countPendingSummaries();
+
+    @Query("""
+            SELECT sol.id_solicitud AS idSolicitud,
+                   sol.monto AS montoSolicitado,
+                   sol.plazo AS plazoMeses,
+                   sol.email AS emailUsuario,
+                   tp.nombre AS tipoPrestamo,
+                   tp.tasa_interes AS tasaInteres,
+                   est.descripcion AS estadoSolicitud,
+                   CASE
+                      WHEN est.nombre = 'APPROVED' THEN ROUND(sol.monto * ((tp.tasa_interes / 12 / 100) / (1 - POWER(1 + (tp.tasa_interes / 12 / 100), -sol.plazo))), 2)
+                      ELSE 0
+                  END AS deudaTotalMensual
+            FROM solicitud sol
+                 JOIN estados est ON sol.id_estado = est.id_estado
+                 JOIN tipo_prestamo tp ON sol.id_tipo_prestamo = tp.id_tipo_prestamo
+            WHERE sol.id_solicitud = :loanApplicationId
+    """)
+    Mono<LoanApplicationFieldsPageDto> findByLoanApplicationId(@Param("idSolicitud") Long idSolicitud);
+
+    @Query("""
+            UPDATE solicitud
+            SET id_estado = :status
+            WHERE id_solicitud = :loanApplicationId
+            """)
+    Mono<LoanApplication> updateStatusLoanApplication(@Param("loanApplicationId") Long loanApplicationId, @Param("status") Long status);
 }

@@ -2,21 +2,32 @@ package co.com.pragma.usecase.loanApplication;
 
 import co.com.pragma.model.common.exceptions.InvalidInputException;
 import co.com.pragma.model.common.exceptions.NotFoundException;
+import co.com.pragma.model.common.models.PaginationResponse;
 import co.com.pragma.model.loanType.LoanType;
 import co.com.pragma.model.loanType.gateways.LoanTypeRepository;
 import co.com.pragma.model.loanapplication.LoanApplication;
+import co.com.pragma.model.loanapplication.dto.LoanApplicationPagedResponse;
+import co.com.pragma.model.loanapplication.dto.SQSMessage;
+import co.com.pragma.model.loanapplication.dto.SearchRequest;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
+import co.com.pragma.model.loanapplication.gateways.NotificationQueueGateway;
+import co.com.pragma.model.loanstatus.gateways.LoanstatusRepository;
+import co.com.pragma.model.user.User;
 import co.com.pragma.model.user.gateways.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.math.BigDecimal;
+import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -33,6 +44,12 @@ class LoanApplicationUseCaseTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private LoanstatusRepository loanStatusRepository;
+
+    @Mock
+    private NotificationQueueGateway notificationQueueGateway;
+
     private LoanApplicationUseCase loanApplicationUseCase;
 
     private LoanApplication testLoanApplication;
@@ -43,7 +60,9 @@ class LoanApplicationUseCaseTest {
         loanApplicationUseCase = new LoanApplicationUseCase(
                 loanApplicationRepository,
                 loanTypeRepository,
-                userRepository
+                userRepository,
+                loanStatusRepository,
+                notificationQueueGateway
         );
 
         testLoanType = LoanType.builder()
@@ -181,17 +200,171 @@ class LoanApplicationUseCaseTest {
                 .verify();
     }
 
-//    @Test
-//    void getPendingLoanApplicationsPaged_ShouldReturnResponseWithPagination() {
-//        List<LoanApplicationSummaryView> summaries = List.of(/* mocks o instancias de prueba */);
-//        when(loanApplicationRepository.findAllSummariesPaged(anyInt(), anyInt()))
-//                .thenReturn(reactor.core.publisher.Flux.fromIterable(summaries));
-//        when(loanApplicationRepository.countPendingSummaries())
-//                .thenReturn(Mono.just(10L));
-//
-//        StepVerifier.create(loanApplicationUseCase.getPendingLoanApplicationsPaged(0, 5))
-//                .expectNextMatches(response -> response.getPagination().get("totalElements").equals(10L))
-//                .verifyComplete();
-//    }
+    @Test
+    void validateLoanApplication_InvalidEmailFormat_ShouldThrowException() {
+        LoanApplication invalidApplication = testLoanApplication.toBuilder()
+                .email("testexample.com") // sin @
+                .build();
+
+        StepVerifier.create(loanApplicationUseCase.validateLoanApplication(invalidApplication))
+                .expectError(InvalidInputException.class)
+                .verify();
+    }
+
+    @Test
+    void validateLoanApplication_NullAmount_ShouldThrowException() {
+        LoanApplication invalidApplication = testLoanApplication.toBuilder()
+                .amount(null)
+                .build();
+
+        StepVerifier.create(loanApplicationUseCase.validateLoanApplication(invalidApplication))
+                .expectError(InvalidInputException.class)
+                .verify();
+    }
+
+    @Test
+    void validateLoanApplication_NullTerm_ShouldThrowException() {
+        LoanApplication invalidApplication = testLoanApplication.toBuilder()
+                .term(null)
+                .build();
+
+        StepVerifier.create(loanApplicationUseCase.validateLoanApplication(invalidApplication))
+                .expectError(InvalidInputException.class)
+                .verify();
+    }
+
+    @Test
+    void updateStatusLoanApplication_Approved_ShouldSendNotification() {
+        Long loanApplicationId = 1L;
+        String statusName = "APPROVED";
+        Long statusId = 2L;
+        LoanApplicationPagedResponse updatedApplication = LoanApplicationPagedResponse.builder()
+                .emailUsuario("test@example.com")
+                .estadoSolicitud("APPROVED")
+                .build();
+
+        when(loanStatusRepository.findIdByName(statusName)).thenReturn(Mono.just(statusId));
+        when(loanApplicationRepository.findByLoanApplicationId(loanApplicationId)).thenReturn(Mono.just(updatedApplication));
+        when(loanApplicationRepository.updateLoanApplication(loanApplicationId, statusId)).thenReturn(Mono.just(updatedApplication));
+        when(notificationQueueGateway.publishLoanApplicationStatusChanged(any())).thenReturn(Mono.empty());
+
+        StepVerifier.create(loanApplicationUseCase.updateStatusLoanApplication(loanApplicationId, statusName))
+                .expectNext(updatedApplication)
+                .verifyComplete();
+    }
+
+    @Test
+    void updateStatusLoanApplication_OtherStatus_ShouldNotSendNotification() {
+        Long loanApplicationId = 1L;
+        String statusName = "PENDING";
+        Long statusId = 3L;
+        LoanApplicationPagedResponse updatedApplication = LoanApplicationPagedResponse.builder()
+                .emailUsuario("test@example.com")
+                .estadoSolicitud("PENDING")
+                .build();
+
+        when(loanStatusRepository.findIdByName(statusName)).thenReturn(Mono.just(statusId));
+        when(loanApplicationRepository.findByLoanApplicationId(loanApplicationId)).thenReturn(Mono.just(updatedApplication));
+        when(loanApplicationRepository.updateLoanApplication(loanApplicationId, statusId)).thenReturn(Mono.just(updatedApplication));
+
+        StepVerifier.create(loanApplicationUseCase.updateStatusLoanApplication(loanApplicationId, statusName))
+                .expectNext(updatedApplication)
+                .verifyComplete();
+    }
+
+    @Test
+    void updateStatusLoanApplication_ShouldPropagateError_WhenRepositoryFails() {
+        Long loanApplicationId = 1L;
+        String statusName = "APPROVED";
+        RuntimeException error = new RuntimeException("Repository error");
+
+        when(loanStatusRepository.findIdByName(statusName)).thenReturn(Mono.error(error));
+
+        StepVerifier.create(loanApplicationUseCase.updateStatusLoanApplication(loanApplicationId, statusName))
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+
+    @Test
+    void updateStatusLoanApplication_Approved_ShouldPropagateError_WhenNotificationFails() {
+        Long loanApplicationId = 1L;
+        String statusName = "APPROVED";
+        Long statusId = 2L;
+        LoanApplicationPagedResponse updatedApplication = LoanApplicationPagedResponse.builder()
+                .emailUsuario("test@example.com")
+                .estadoSolicitud("APPROVED")
+                .build();
+
+        when(loanStatusRepository.findIdByName(statusName)).thenReturn(Mono.just(statusId));
+        when(loanApplicationRepository.findByLoanApplicationId(loanApplicationId)).thenReturn(Mono.just(updatedApplication));
+        when(loanApplicationRepository.updateLoanApplication(loanApplicationId, statusId)).thenReturn(Mono.just(updatedApplication));
+        when(notificationQueueGateway.publishLoanApplicationStatusChanged(any())).thenReturn(Mono.error(new RuntimeException("Notification error")));
+
+        StepVerifier.create(loanApplicationUseCase.updateStatusLoanApplication(loanApplicationId, statusName))
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+
+    @Test
+    void updateStatusLoanApplication_Rejected_ShouldSendNotification() {
+        Long loanApplicationId = 1L;
+        String statusName = "REJECTED";
+        Long statusId = 4L;
+        LoanApplicationPagedResponse updatedApplication = LoanApplicationPagedResponse.builder()
+                .emailUsuario("test@example.com")
+                .estadoSolicitud("REJECTED")
+                .build();
+
+        when(loanStatusRepository.findIdByName(statusName)).thenReturn(Mono.just(statusId));
+        when(loanApplicationRepository.findByLoanApplicationId(loanApplicationId)).thenReturn(Mono.just(updatedApplication));
+        when(loanApplicationRepository.updateLoanApplication(loanApplicationId, statusId)).thenReturn(Mono.just(updatedApplication));
+        when(notificationQueueGateway.publishLoanApplicationStatusChanged(any())).thenReturn(Mono.empty());
+
+        StepVerifier.create(loanApplicationUseCase.updateStatusLoanApplication(loanApplicationId, statusName))
+                .expectNext(updatedApplication)
+                .verifyComplete();
+    }
+
+    @Test
+    void getPendingLoanApplicationsPaged_ShouldReturnPaginatedResponse() {
+        SearchRequest searchRequest = new SearchRequest();
+        searchRequest.setPage(0);
+        searchRequest.setSize(5);
+        LoanApplicationPagedResponse response = LoanApplicationPagedResponse.builder()
+                .emailUsuario("test@example.com")
+                .build();
+        List<User> users = List.of(User.builder().email("test@example.com").build());
+
+        when(loanApplicationRepository.findAllSummariesPaged(searchRequest)).thenReturn(Flux.just(response));
+        when(loanApplicationRepository.countPendingSummaries()).thenReturn(Mono.just(1L));
+        when(userRepository.getAllUsers()).thenReturn(Mono.just(users));
+
+        StepVerifier.create(loanApplicationUseCase.getPendingLoanApplicationsPaged(searchRequest))
+                .expectNextMatches(baseResponse -> {
+                    PaginationResponse pagination = (PaginationResponse) baseResponse.getPagination();
+                    return baseResponse.getData().size() == 1 &&
+                            pagination.getTotalElements() == 1L;
+                })
+                .verifyComplete();
+    }
+
+    // Test para createSQSMessage
+    @Test
+    void createSQSMessage_ShouldBuildCorrectMessage() {
+        LoanApplicationPagedResponse response = LoanApplicationPagedResponse.builder()
+                .emailUsuario("test@example.com")
+                .estadoSolicitud("APPROVED")
+                .tipoPrestamo("Personal")
+                .montoSolicitado(new BigDecimal("10000"))
+                .plazoMeses(12)
+                .tasaInteres(new BigDecimal("12.5"))
+                .deudaTotalMensual(new BigDecimal("610.26"))
+                .build();
+
+        SQSMessage message = loanApplicationUseCase.createSQSMessage(response, 1L);
+
+        assertEquals("test@example.com", message.to());
+        assertTrue(message.body().contains("Banco CrediYa"));
+    }
 
 }
