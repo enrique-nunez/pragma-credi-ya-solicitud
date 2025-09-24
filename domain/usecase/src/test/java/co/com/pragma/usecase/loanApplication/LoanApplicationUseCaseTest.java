@@ -6,6 +6,8 @@ import co.com.pragma.model.loanType.LoanType;
 import co.com.pragma.model.loanType.gateways.LoanTypeRepository;
 import co.com.pragma.model.loanapplication.LoanApplication;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
+import co.com.pragma.model.loanapplication.gateways.NotificationQueueGateway;
+import co.com.pragma.model.loanstatus.gateways.LoanstatusRepository;
 import co.com.pragma.model.user.gateways.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +35,12 @@ class LoanApplicationUseCaseTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private LoanstatusRepository loanStatusRepository;
+
+    @Mock
+    private NotificationQueueGateway notificationQueueGateway;
+
     private LoanApplicationUseCase loanApplicationUseCase;
 
     private LoanApplication testLoanApplication;
@@ -43,7 +51,9 @@ class LoanApplicationUseCaseTest {
         loanApplicationUseCase = new LoanApplicationUseCase(
                 loanApplicationRepository,
                 loanTypeRepository,
-                userRepository
+                userRepository,
+                loanStatusRepository,
+                notificationQueueGateway
         );
 
         testLoanType = LoanType.builder()

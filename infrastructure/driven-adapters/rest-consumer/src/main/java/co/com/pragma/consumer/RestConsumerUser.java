@@ -1,6 +1,7 @@
 package co.com.pragma.consumer;
 
 import co.com.pragma.model.common.models.BaseResponse;
+import co.com.pragma.model.user.User;
 import co.com.pragma.model.user.gateways.UserRepository;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,9 @@ import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import reactor.core.publisher.Mono;
+
+import java.util.Collections;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -39,6 +43,28 @@ public class RestConsumerUser implements UserRepository {
     public Mono<Boolean> fallbackExistUserByEmail(String email, Exception exception) {
         log.warn("Fallback activado para verificar usuario {}: {}", email, exception.getMessage());
         return Mono.just(false);
+    }
+
+    // obtener todos los usuarios
+    @CircuitBreaker(name = "getAllUsers", fallbackMethod = "fallbackGetAllUsers")
+    public Mono<List<User>> getAllUsers() {
+        log.info("Obteniendo todos los usuarios");
+        return getCurrentToken()
+                .flatMap(jwtToken -> client
+                        .get()
+                        .uri("/api/v1/usuarios")
+                        .header("Authorization", "Bearer " + jwtToken)
+                        .retrieve()
+                        .bodyToMono(new ParameterizedTypeReference<BaseResponse<List<User>>>() {})
+                        .map(BaseResponse::getData)
+                        .doOnSuccess(users -> log.info("Usuarios obtenidos: {}", users.size()))
+                        .doOnError(error -> log.error("Error al obtener usuarios: {}", error.getMessage(), error))
+                );
+    }
+
+    public Mono<List<User>> fallbackGetAllUsers(Exception exception) {
+        log.warn("Fallback activado para obtener usuarios: {}", exception.getMessage());
+        return Mono.just(Collections.emptyList());
     }
 
     /**

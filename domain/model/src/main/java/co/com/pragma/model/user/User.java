@@ -78,6 +78,10 @@ public class User {
                 .roleId(this.roleId);
     }
 
+    public String getFullName() {
+        return firstName + " " + lastName;
+    }
+
     public static class UserBuilder {
         private Long id;
         private String firstName;

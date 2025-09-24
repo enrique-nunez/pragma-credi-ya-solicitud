@@ -13,5 +13,8 @@ public interface LoanApplicationMapper {
     @Mapping(target = "idLoan", ignore = true)
     LoanApplication toLoanApplication(SaveLoanApplicationDto saveLoanApplicationDto);
 
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "statusId", ignore = true)
+    @Mapping(target = "identityDocument", ignore = true)
     LoanApplicationResponseDto toLoanApplicationResponseDto(LoanApplication user);
 }

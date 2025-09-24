@@ -8,10 +8,12 @@ import co.com.pragma.model.common.models.ResponseMessages;
 import co.com.pragma.model.loanType.gateways.LoanTypeRepository;
 import co.com.pragma.model.loanapplication.LoanApplication;
 import co.com.pragma.model.loanapplication.dto.LoanApplicationPagedResponse;
+import co.com.pragma.model.loanapplication.dto.LoanApplicationPagedResponseMapper;
 import co.com.pragma.model.loanapplication.dto.SearchRequest;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.pragma.model.loanapplication.gateways.NotificationQueueGateway;
 import co.com.pragma.model.loanstatus.gateways.LoanstatusRepository;
+import co.com.pragma.model.user.User;
 import co.com.pragma.model.user.gateways.UserRepository;
 import co.com.pragma.model.common.enums.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -52,25 +54,30 @@ public class LoanApplicationUseCase {
     }
 
     public Mono<BaseResponse<List<LoanApplicationPagedResponse>>> getPendingLoanApplicationsPaged(SearchRequest searchRequest) {
-        return loanApplicationRepository.findAllSummariesPaged(searchRequest)
-                .collectList()
-                .zipWith(loanApplicationRepository.countPendingSummaries())
-                .map(tuple -> {
-                    List<LoanApplicationPagedResponse> content = tuple.getT1();
-                    Long totalElements = tuple.getT2();
+        return Mono.zip(
+                    loanApplicationRepository.findAllSummariesPaged(searchRequest).collectList(),
+                    loanApplicationRepository.countPendingSummaries(),
+                    userRepository.getAllUsers()
+                ).map(tuple -> {
+                        List<User> users = tuple.getT3();
+                        List<LoanApplicationPagedResponse> content = tuple.getT1().stream()
+                            .map(summary -> LoanApplicationPagedResponseMapper.map(summary, users))
+                            .toList();
 
-                    PaginationResponse pagination = PaginationResponse.builder()
-                            .page(searchRequest.getPage())
-                            .size(searchRequest.getSize())
-                            .totalElements(totalElements)
-                            .totalPages((int) Math.ceil((double) totalElements / searchRequest.getSize()))
-                            .build();
+                        Long totalElements = tuple.getT2();
 
-                    BaseResponse<List<LoanApplicationPagedResponse>> response = new BaseResponse<>(
-                            true, content, ResponseMessages.OPERATION_SUCCESSFUL
-                    );
-                    response.setPagination(pagination);
-                    return response;
+                        PaginationResponse pagination = PaginationResponse.builder()
+                                .page(searchRequest.getPage())
+                                .size(searchRequest.getSize())
+                                .totalElements(totalElements)
+                                .totalPages((int) Math.ceil((double) totalElements / searchRequest.getSize()))
+                                .build();
+
+                        BaseResponse<List<LoanApplicationPagedResponse>> response = new BaseResponse<>(
+                                true, content, ResponseMessages.OPERATION_SUCCESSFUL
+                        );
+                        response.setPagination(pagination);
+                        return response;
                 });
     }
 
