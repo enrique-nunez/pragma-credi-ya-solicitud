@@ -63,16 +63,20 @@ springdoc:
   show-actuator: false
 application:
   name: "Pragma Solicitudes Management API"
-  description: "API REST para administración de solicitudes con arquitectura reactiva\
+  description: "API REST para administraci�n de solicitudes con arquitectura reactiva\
     \ usando Spring WebFlux y R2DBC con PostgreSQL. - Banco Colombia CrediYaLoan"
   version: "1.0.0"
-
 security:
   jwt:
-    secret: miSecretoSuperSecreto123456789012345678901234567890
+    secret: "miSecretoSuperSecreto123456789012345678901234567890"
     ttl-minutes: 1440
     expiration: 86400000
-
 app:
-  issuer: pragma-credi-ya
-  audience: pragma-credi-ya-audience
+  issuer: "pragma-credi-ya"
+  audience: "pragma-credi-ya-audience"
+adapter:
+  sqs:
+    region: "us-east-1"
+    queueUrl: "${AWS_QUEUE_URL}"
+    accessKeyId: "https://sqs.us-east-1.amazonaws.com/356315793028/loan-notification-queue"
+    secretAccessKey: "3vMNodvA6XN812cWLDOkwTBb/+ZI1+Jg3RxRyNXx"

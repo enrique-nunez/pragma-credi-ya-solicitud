@@ -1,5 +1,6 @@
 package co.com.pragma.r2dbc;
 
+import co.com.pragma.model.loanapplication.LoanApplication;
 import co.com.pragma.r2dbc.dto.LoanApplicationFieldsPageDto;
 import co.com.pragma.r2dbc.entity.LoanApplicationEntity;
 import org.springframework.data.r2dbc.repository.Query;
@@ -39,4 +40,11 @@ public interface LoanApplicationReactiveRepository extends ReactiveCrudRepositor
     WHERE est.nombre = 'PENDING'
     """)
     Mono<Long> countPendingSummaries();
+
+    @Query("""
+            SELECT email, monto, plazo
+            FROM loan_applications
+            WHERE id = $1
+            """)
+    Mono<LoanApplication> findByLoanApplicationId(Integer loanApplicationId);
 }

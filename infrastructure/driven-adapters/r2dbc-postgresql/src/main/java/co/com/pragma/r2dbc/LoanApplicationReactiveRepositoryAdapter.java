@@ -46,4 +46,9 @@ public class LoanApplicationReactiveRepositoryAdapter extends ReactiveAdapterOpe
     public Mono<Long> countPendingSummaries() {
         return repository.countPendingSummaries();
     }
+
+    @Override
+    public Mono<LoanApplication> findByLoanApplicationId(Integer loanApplicationId) {
+        return repository.findByLoanApplicationId(loanApplicationId);
+    }
 }

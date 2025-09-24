@@ -8,7 +8,7 @@ import reactor.core.publisher.Mono;
 
 public interface LoanApplicationRepository {
     Mono<LoanApplication> save(LoanApplication loanApplication);
-//    Flux<LoanApplicationSummaryView> findAllSummariesPaged(SearchRequest searchRequest);
+    Mono<LoanApplication> findByLoanApplicationId(Integer loanApplicationId);
     Flux<LoanApplicationPagedResponse> findAllSummariesPaged(SearchRequest searchRequest);
     Mono<Long> countPendingSummaries();
 }

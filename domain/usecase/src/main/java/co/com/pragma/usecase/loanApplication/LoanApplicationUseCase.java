@@ -10,6 +10,8 @@ import co.com.pragma.model.loanapplication.LoanApplication;
 import co.com.pragma.model.loanapplication.dto.LoanApplicationPagedResponse;
 import co.com.pragma.model.loanapplication.dto.SearchRequest;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
+import co.com.pragma.model.loanapplication.gateways.NotificationQueueGateway;
+import co.com.pragma.model.loanstatus.gateways.LoanstatusRepository;
 import co.com.pragma.model.user.gateways.UserRepository;
 import co.com.pragma.model.common.enums.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,8 @@ public class LoanApplicationUseCase {
     private final LoanApplicationRepository loanApplicationRepository;
     private final LoanTypeRepository loanTypeRepository;
     private final UserRepository userRepository;
+    private final LoanstatusRepository loanStatusRepository;
+    private final NotificationQueueGateway notificationQueueGateway;
 
     public Mono<LoanApplication> saveLoanApplication(LoanApplication loanApplication) {
         logger.info("Iniciando registro de solicitud de préstamo para email: " + loanApplication.getEmail());
@@ -70,6 +74,18 @@ public class LoanApplicationUseCase {
                 });
     }
 
+//    public Mono<LoanApplication> updateStatusLoanApplication(Integer loanApplicationId, String status) {
+//        return loanApplicationRepository.findByLoanApplicationId(loanApplicationId)
+//                .switchIfEmpty(Mono.error(new NotFoundException(ErrorCode.LOAN_TYPE_NOT_EXISTS)))
+//                .flatMap(loanApplication -> loanStatusRepository.existsById(status)
+//                        .flatMap(valid -> valid
+//                                ?
+//                                    // send notification before updating status
+//
+//                                : Mono.error(new NotFoundException(ErrorCode.STATUS_LOAN_NOT_EXISTS))
+//                        )
+//                );
+//    }
 
 
     Mono<LoanApplication> validateLoanApplication(LoanApplication loanApplication) {
