@@ -93,7 +93,7 @@ public class LoanApplicationUseCase {
                                 .flatMap(updatedApplication -> {
                                     if (TypeStatusLoan.APPROVED.getDescription().equalsIgnoreCase(statusName) || TypeStatusLoan.REJECTED.getDescription().equalsIgnoreCase(statusName)) {
                                         return notificationQueueGateway.publishLoanApplicationStatusChanged(
-                                                        createSQSMessage(updatedApplication, loanApplicationId)
+                                                        createSQSMessage(updatedApplication, statusName)
                                                 )
                                                 .doOnError(error -> logger.warning("Error sending notification: " + error.getMessage()))
                                                 .thenReturn(updatedApplication);
@@ -104,22 +104,34 @@ public class LoanApplicationUseCase {
                 );
     }
 
-    public SQSMessage createSQSMessage(LoanApplicationPagedResponse loanApplication, Long loanApplicationId) {
+    public SQSMessage createSQSMessage(LoanApplicationPagedResponse loanApplication, String statusName) {
+        String subject = "Su solicitud de prestamo ha sido " +  loanApplication.getEstadoSolicitud().toLowerCase();
+        String body;
+
+        if (TypeStatusLoan.APPROVED.getDescription().equalsIgnoreCase(statusName)) {
+            body = "Estimado/a usuario,\n\n" +
+                    "Felicitaciones! Su solicitud de prestamo ha sido aprobada.\n\n" +
+                    "Detalles de la solicitud:\n" +
+                    "- Tipo de prestamo: " + loanApplication.getTipoPrestamo() + "\n" +
+                    "- Monto aprobado: $" + loanApplication.getMontoSolicitado() + "\n" +
+                    "- Plazo (meses): " + loanApplication.getPlazoMeses() + "\n" +
+                    "- Tasa de interes: " + loanApplication.getTasaInteres() + "%\n" +
+                    "- Cuota mensual: $" + loanApplication.getDeudaTotalMensual() + "\n\n" +
+                    "En breve nos contactaremos con usted para finalizar el proceso.\n\n" +
+                    "Atentamente,\nBanco CrediYa";
+        } else {
+            body = "Estimado/a usuario,\n\n" +
+                    "Lamentamos informarle que su solicitud de prestamo no ha sido aprobada en esta ocasion.\n\n" +
+                    "Esta decision se basa en nuestros criterios de evaluacion crediticia vigentes. " +
+                    "Le invitamos a consultar con nuestro equipo de atencion para conocer mas detalles.\n\n" +
+                    "Agradecemos su confianza y esperamos poder atenderle en el futuro.\n\n" +
+                    "Atentamente,\nBanco CrediYa";
+        }
+
         return SQSMessage.builder()
                 .to(loanApplication.getEmailUsuario())
-                .subject("Su solicitud de prestamo ha sido " + loanApplication.getEstadoSolicitud().toLowerCase())
-                .body(
-                        "Estimado/a  usuario,\n\n" +
-                                "Le informamos que su solicitud de prestamo  ha sido " + loanApplication.getEstadoSolicitud().toLowerCase() + ".\n\n" +
-                                "Detalles de la solicitud:\n" +
-                                "- Tipo de prestamo: " + loanApplication.getTipoPrestamo() + "\n" +
-                                "- Monto solicitado: $" + loanApplication.getMontoSolicitado() + "\n" +
-                                "- Plazo (meses): " + loanApplication.getPlazoMeses() + "\n" +
-                                "- Tasa de interes: " + loanApplication.getTasaInteres() + "%\n" +
-                                "- Deuda mensual: $" + loanApplication.getDeudaTotalMensual() + "\n\n" +
-                                "Por favor, no responda a este correo. Si tiene dudas, comuníquese con nuestro equipo de atencion.\n\n" +
-                                "Atentamente,\nBanco CrediYa"
-                )
+                .subject(subject)
+                .body(body)
                 .build();
     }
 

@@ -26,8 +26,7 @@ import reactor.test.StepVerifier;
 import java.math.BigDecimal;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -361,10 +360,58 @@ class LoanApplicationUseCaseTest {
                 .deudaTotalMensual(new BigDecimal("610.26"))
                 .build();
 
-        SQSMessage message = loanApplicationUseCase.createSQSMessage(response, 1L);
+        SQSMessage message = loanApplicationUseCase.createSQSMessage(response, "APPROVED");
 
         assertEquals("test@example.com", message.to());
         assertTrue(message.body().contains("Banco CrediYa"));
+    }
+
+    @Test
+    void createSQSMessage_Rejected_ShouldNotIncludeDetails() {
+        LoanApplicationPagedResponse response = LoanApplicationPagedResponse.builder()
+                .emailUsuario("test@example.com")
+                .estadoSolicitud("REJECTED")
+                .tipoPrestamo("Personal")
+                .montoSolicitado(new BigDecimal("10000"))
+                .plazoMeses(12)
+                .tasaInteres(new BigDecimal("12.5"))
+                .deudaTotalMensual(new BigDecimal("610.26"))
+                .build();
+
+        SQSMessage message = loanApplicationUseCase.createSQSMessage(response, "REJECTED");
+
+        assertEquals("test@example.com", message.to());
+        assertEquals("Su solicitud de prestamo ha sido rejected", message.subject());
+        assertTrue(message.body().contains("Lamentamos informarle"));
+        assertTrue(message.body().contains("Banco CrediYa"));
+        // Verificar que NO contiene detalles sensibles
+        assertFalse(message.body().contains("Personal"));
+        assertFalse(message.body().contains("10000"));
+        assertFalse(message.body().contains("12"));
+    }
+
+    @Test
+    void createSQSMessage_Approved_ShouldIncludeDetails() {
+        LoanApplicationPagedResponse response = LoanApplicationPagedResponse.builder()
+                .emailUsuario("test@example.com")
+                .estadoSolicitud("APPROVED")
+                .tipoPrestamo("Personal")
+                .montoSolicitado(new BigDecimal("10000"))
+                .plazoMeses(12)
+                .tasaInteres(new BigDecimal("12.5"))
+                .deudaTotalMensual(new BigDecimal("610.26"))
+                .build();
+
+        SQSMessage message = loanApplicationUseCase.createSQSMessage(response, "APPROVED");
+
+        assertEquals("test@example.com", message.to());
+        assertEquals("Su solicitud de prestamo ha sido approved", message.subject());
+        assertTrue(message.body().contains("Felicitaciones!"));
+        assertTrue(message.body().contains("Banco CrediYa"));
+        assertTrue(message.body().contains("Personal"));
+        assertTrue(message.body().contains("10000"));
+        assertTrue(message.body().contains("12"));
+        assertTrue(message.body().contains("12.5"));
     }
 
 }
