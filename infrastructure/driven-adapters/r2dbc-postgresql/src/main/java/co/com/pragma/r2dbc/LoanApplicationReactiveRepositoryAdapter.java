@@ -4,8 +4,6 @@ import co.com.pragma.model.loanapplication.LoanApplication;
 import co.com.pragma.model.loanapplication.dto.LoanApplicationPagedResponse;
 import co.com.pragma.model.loanapplication.dto.SearchRequest;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
-import co.com.pragma.model.loanstatus.gateways.LoanstatusRepository;
-import co.com.pragma.r2dbc.dto.LoanApplicationFieldsPageDto;
 import co.com.pragma.r2dbc.entity.LoanApplicationEntity;
 import co.com.pragma.r2dbc.helper.ReactiveAdapterOperations;
 import co.com.pragma.r2dbc.mappers.LoanApplicationSearchMapper;

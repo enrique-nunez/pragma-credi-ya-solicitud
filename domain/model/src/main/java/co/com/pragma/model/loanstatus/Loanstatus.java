@@ -1,6 +1,6 @@
 package co.com.pragma.model.loanstatus;
+
 import lombok.*;
-//import lombok.NoArgsConstructor;
 
 
 @Getter

@@ -2,9 +2,6 @@ package co.com.pragma.r2dbc;
 
 import co.com.pragma.model.loanType.LoanType;
 import co.com.pragma.model.loanType.gateways.LoanTypeRepository;
-import co.com.pragma.model.loanapplication.LoanApplication;
-import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
-import co.com.pragma.r2dbc.entity.LoanApplicationEntity;
 import co.com.pragma.r2dbc.entity.LoanTypeEntity;
 import co.com.pragma.r2dbc.helper.ReactiveAdapterOperations;
 import lombok.extern.slf4j.Slf4j;

@@ -4,8 +4,6 @@ import co.com.pragma.api.dto.LoanApplicationResponseDto;
 import co.com.pragma.api.dto.SaveLoanApplicationDto;
 import co.com.pragma.api.dto.StatusRequestDto;
 import co.com.pragma.api.mapper.LoanApplicationMapper;
-import co.com.pragma.model.common.exceptions.GlobalBusinessException;
-import co.com.pragma.model.common.exceptions.InvalidInputException;
 import co.com.pragma.model.common.models.BaseResponse;
 import co.com.pragma.model.common.models.GlobalBusinessValidation;
 import co.com.pragma.model.common.models.ResponseMessages;
